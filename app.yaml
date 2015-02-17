@@ -1,0 +1,29 @@
+application: fixdecoder
+version: 2
+runtime: python
+api_version: 1
+
+handlers:
+- url: /
+  static_files: index.html
+  upload: index.html
+ 
+- url: /FIX42\.xml
+  static_files: FIX42.xml
+  upload: FIX42.xml
+
+- url: /FIX43\.xml
+  static_files: FIX43.xml
+  upload: FIX43.xml
+  
+- url: /FIX44\.xml
+  static_files: FIX44.xml
+  upload: FIX44.xml    
+
+- url: /img/grid-18px-masked\.png
+  static_files: img/grid-18px-masked.png
+  upload: img/grid-18px-masked.png   
+
+- url: /.*
+  script: helloworld.py
+  

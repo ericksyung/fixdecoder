@@ -1,0 +1,284 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<meta name="keywords" content="FIX,FIX Protocol,FIX Decoder,JavaScript" />
+<meta name="google-site-verification" content="8X2Sju4I8BVPnKi-MYixmR8y1c3tU01XuXJ-v3F20rU" />
+<title>FIX Decoder</title>
+
+<link rel="stylesheet" type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.1/themes/base/jquery-ui.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+   
+<style>
+	  #smae:hover
+	  {
+	  		color:#993;
+	  		cursor:pointer;
+	  }
+	  #smae
+	  {
+	  		font-size:	11px;
+	  }
+	  
+	  body
+	  {
+	    	background-color: #FFFFFF;
+    		background-image: url("./img/grid-18px-masked.png");
+    		background-position: 0 0px;
+    		background-repeat: repeat-x;
+	  }
+	
+	  .rounded-corners {
+     		-moz-border-radius: 10px;
+    		-webkit-border-radius: 10px;
+    		-khtml-border-radius: 10px;
+    		border-radius: 10px;
+	  }
+
+	  .shadow-box {
+		  	-moz-box-shadow:5px 5px 5px #101010;
+			-webkit-box-shadow:5px 5px 5px #101010;
+			box-shadow:5px 5x 5px #101010;
+	  }
+      #ParseResult
+      {
+  			padding: 20px; 
+  			background-color:  rgb(215,215,215);
+      }
+      #FIXMsgInput
+      {
+      		padding: 20px; 
+  			background-color:  rgb(225,225,225);
+      }
+</style>
+  
+  
+  
+<script>
+ 	// setup the FIXTagMap (by reading the FIX 4.2)
+	var FIXTagMap = {};
+ 	var FIXVersion = "FIX42";
+	
+ 	function buildFIXTagMap(FIXTagXML)
+	{
+		FIXTagMap = {}
+		$.get("FIX42.xml", {}, function(xml){
+			$('field', xml).each(function(i){
+				if ($(this).attr("number"))
+				{
+					var tagID = $(this).attr("number")
+					var tagDesc = $(this).attr("name")
+					var tagEnum = {}
+					FIXTagMap[tagID] = new Object;
+					FIXTagMap[tagID].tagDesc = tagDesc;
+												
+					$( "value", $(this)).each(function(j){
+						
+							var EnumID =$(this).attr("enum");
+							var EnumDesc = $(this).attr("description");
+							tagEnum [EnumID ] = EnumDesc
+						});
+					
+					FIXTagMap[tagID].tagEnum = tagEnum
+				}
+										
+			});
+		});
+	}
+
+ 	function fastParseFixInTableFmt(m, msgCnt) {
+		  var tag; 
+		  var field;
+		  var value; 
+		  var types;
+		  var enums; 
+		  var fields;
+		  var msgs; 
+		  
+		  var line = m;
+
+		  var i = m.indexOf('8=FIX');
+		  //console.log("i=" + i);
+		  
+		  m = m.substring(i);
+		  //console.log("m=" + m);
+		  
+		  var head = m.substring(0,9);
+		  separator = m.charAt(9);
+		  if (separator == '^' &&  m.charAt(10) == 'A') {
+				separator = "^A";  
+		  }
+		  var array =  m.split(separator);
+
+		  var str = "";
+		  
+		  str += "<strong>Message #" + msgCnt + "</strong>";
+		  str += "<br><span style='font-size:10px;'> " + line + "</span>";
+		  str += "<table border='1'>" 
+		  str += "<tr> <th>Tag</th> <th>Field</th><th>Value</th><th>Description</th> </tr>"
+		  
+		  var oneIfMsgEndsWithSOH = ((m.charAt(m.length-1))=== separator) ? 1 : 0;    
+		  var arrayLength = array.length - oneIfMsgEndsWithSOH;
+		    
+		  for (var i=0;i<arrayLength;i++) {
+		    var ieq = array[i].indexOf('='); 
+		    if (ieq === -1) { 
+		      if ( array[i].match("/^M$/" ) == false)
+		      {
+		     	 str+='   ??? <'+array[i]+'>\n'; // not even a tag.
+		      }
+		      continue; 
+		    }
+		    tag =   array[i].substring(0,ieq); 
+		    value = array[i].substring(ieq+1); 
+		    var tagElem = FIXTagMap[tag];
+		    var tagDesc = "";
+		    var tagEnum = "";
+		    
+		    if (tagElem)
+		    {
+		    	if (tagElem.tagEnum[value])
+			    	tagEnum = tagElem.tagEnum[value];	
+		    	
+		    	tagDesc = tagElem.tagDesc;
+		    }
+		    
+		    str += "<tr><td> <div class=\"fixtag\">" + tag + "</div></td><td>" + tagDesc + "</td> <td>" + value + "</td><td>"+tagEnum+"</td> </tr>"
+		  }	  
+		
+		  return str+='</table>';
+		}
+ 	
+ 	</script>
+<script>
+ 	// setup the 
+ 	
+	$(function() {
+		
+		
+		// update bind for popup
+		var dialogOpts = {
+			modal: false,
+			bgiframe: true,
+			autoOpen: false,
+			height: 500,
+			width: 400,
+			draggable: true,
+			resizeable: true
+		};
+		
+		buildFIXTagMap("FIX42.xml");			
+
+		$('#smae').click(function(){
+			var example ='8=FIX.4.2|9=196|35=X|49=A|56=B|34=12|52=20100318-03:21:11.364|262=A|268=2|279=0|269=0|278=BID|55=EUR/USD|270=1.37215|15=EUR|271=2500000|346=1|279=0|269=1|278=OFFER|55=EUR/USD|270=1.37224|15=EUR|271=2503200|346=1|10=171|';
+			//var example='8=FIX.4.2^A9=0158^A35=D^A49=NWG03^A56=CXJ_PROD^A34=000000173^A52=20120217-00:00:52.033^A11=1^A55=3391^A54=1^A38=200^A21=1^A1=KIR03^A40=2^A44=4037.5000000^A47=A^A59=3^A60=20120217-00:00:52.033^A10=195^A ^M'
+			$('#txtFix').val(example);
+			//console.log("#smae click!!");
+			return false;
+			
+		});
+		
+		$('#btnFix' ).click(function() { 
+				//console.log("click!!");
+				var msgCnt = 0;
+				var m = $('#txtFix').val()
+				$('#ParseResult').text( "");
+				
+				
+				var lines = m.split("\n");
+				$.each(lines, function(){
+					m = this;
+					if ($.trim(m) != "" && m.indexOf('8=FIX') >= 0 ) {
+						msgCnt++
+						var result = fastParseFixInTableFmt(m,msgCnt);
+						$('#ParseResult').append(result);	
+						
+						$('#ParseResult').append("<br>");
+					}
+				});
+				
+			
+							
+				$(".fixtag").click(
+						function (){
+							$("#popup").text("");
+							$("#popup").append(
+							$("<iframe />")
+								.css("border-style", "none")
+								.css("padding", "0 0 0 0")
+								.attr("src", "http://www.onixs.biz/fix-dictionary/4.2/tagNum_" + $(this).text() + ".html")
+								.attr("height", "100%")
+								.attr("width", "100%")	
+								.attr("scrolling", "auto")	
+							).dialog(dialogOpts);
+					
+							var position =  $(this).position();
+							//$("#popup").dialog("option", "position", [ $(window).width()- 505, position.top]);
+							$("#popup").dialog("option", "position", [ $(window).width()- 405, $(window).height()- 505]);
+							$("#popup").dialog("option", "title", "tag :" + $(this).text());
+							//$("#popup").data('title.dialog', "tag :" + $(this).text());
+							$("#popup").dialog("open");
+							//console.log($("#popup"));
+							//console.log($(this).text());
+							
+							//console.log("http://www.onixs.biz/fix-dictionary/4.2/tagNum_" + $(this).text() + ".html");
+							
+							return false;
+						}
+				);
+				
+				return false; });
+	});
+</script>
+	
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-29360297-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+</head>
+
+<body>
+<h1>FIX Message</h1>
+
+<!-- Place this tag where you want the +1 button to render -->
+<g:plusone annotation="inline"></g:plusone>
+
+<!-- Place this render call where appropriate -->
+<script type="text/javascript">
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = 'https://apis.google.com/js/plusone.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+</script>
+
+<hr>
+<div class="rounded-corners shadow-box" id="FIXMsgInput">
+	<div id='smae' style='visibility:visible'>[Example]</div>
+	<!-- 
+	<input id='txtFix' type="text" style="font-size:14px;width:100%" ></input>
+	 -->
+	 <textarea id='txtFix' rows="10" style="font-size:14px;width:100%">
+	 </textarea>
+	<button id="btnFix">Parse FIX Message</button>
+</div>
+
+<div style="display: none;" id="popup" title=""></div>
+
+<br>
+
+<div class="rounded-corners shadow-box" id='ParseResult'></div>
+
+</body>
+</html>
